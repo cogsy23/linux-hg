@@ -20,6 +20,7 @@
 	model = "Xilinx Zynq";
 	aliases {
 		ethernet0 = &ps7_ethernet_0;
+		i2c0 = &ps7_i2c_0;
 		serial0 = &ps7_uart_1;
 		spi0 = &ps7_qspi_0;
 	} ;
@@ -308,6 +309,21 @@
 			interrupts = <0 21 4>;
 			phy_type = "ulpi";
 			reg = <0xe0002000 0x1000>;
+		} ;
+		ps7_i2c_0: i2c@e0004000 {
+			compatible = "cdns,i2c-r1p10";
+			clocks = <&clkc 38>;
+			interrupt-parent = <&ps7_scugic_0>;
+			interrupts = <0 25 4>;
+			reg = <0xe0004000 0x1000>;
+			clock-frequency = <400000>;
+			xlnx,has-interrupt = <0x0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			rtc@68 {
+				compatible = "ds3232";
+				reg = <0x68>;
+			};
 		} ;
 		ps7_xadc: ps7-xadc@f8007100 {
 			clocks = <&clkc 12>;
