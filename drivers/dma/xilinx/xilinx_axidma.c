@@ -329,6 +329,12 @@ static void dma_halt(struct xilinx_dma_chan *chan)
 						XILINX_DMA_CONTROL_OFFSET));
 		chan->err = 1;
 	}
+
+	/* Ensure that once this function returns, nothing will be
+	 * accessing the channel. May mean that the callback isn't
+	 * called for the final transaction, but this isn't guaranteed
+	 * by the DMA API anyway */
+	tasklet_disable(&chan->tasklet);
 }
 
 /* Start the hardware. Transfers are not started yet */
