@@ -221,9 +221,11 @@ static void xilinx_dma_free_chan_resources(struct dma_chan *dchan)
 	unsigned long flags;
 
 	dev_dbg(chan->dev, "Free all channel resources.\n");
+	tasklet_disable(&chan->tasklet);
 	spin_lock_irqsave(&chan->lock, flags);
 	xilinx_dma_free_desc_list(chan, &chan->active_list);
 	xilinx_dma_free_desc_list(chan, &chan->pending_list);
+	tasklet_enable(&chan->tasklet);
 	spin_unlock_irqrestore(&chan->lock, flags);
 
 	dma_pool_destroy(chan->desc_pool);
@@ -329,12 +331,6 @@ static void dma_halt(struct xilinx_dma_chan *chan)
 						XILINX_DMA_CONTROL_OFFSET));
 		chan->err = 1;
 	}
-
-	/* Ensure that once this function returns, nothing will be
-	 * accessing the channel. May mean that the callback isn't
-	 * called for the final transaction, but this isn't guaranteed
-	 * by the DMA API anyway */
-	tasklet_kill(&chan->tasklet);
 }
 
 /* Start the hardware. Transfers are not started yet */
