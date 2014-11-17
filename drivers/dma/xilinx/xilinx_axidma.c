@@ -334,7 +334,7 @@ static void dma_halt(struct xilinx_dma_chan *chan)
 	 * accessing the channel. May mean that the callback isn't
 	 * called for the final transaction, but this isn't guaranteed
 	 * by the DMA API anyway */
-	tasklet_disable(&chan->tasklet);
+	tasklet_kill(&chan->tasklet);
 }
 
 /* Start the hardware. Transfers are not started yet */
