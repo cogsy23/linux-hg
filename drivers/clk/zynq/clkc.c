@@ -54,6 +54,9 @@ static void __iomem *zynq_clkc_base;
 
 #define NUM_MIO_PINS	54
 
+#define DBG_CLK_CTRL_CLKACT_TRC		BIT(0)
+#define DBG_CLK_CTRL_CPU_1XCLKACT	BIT(1)
+
 enum zynq_clk {
 	armpll, ddrpll, iopll,
 	cpu_6or4x, cpu_3or2x, cpu_2x, cpu_1x,
@@ -103,8 +106,6 @@ static const char *gem1_emio_input_names[] __initdata = {"gem1_emio_clk"};
 static const char *swdt_ext_clk_input_names[] __initdata = {"swdt_ext_clk"};
 
 #ifdef CONFIG_SUSPEND
-unsigned int zynq_clk_suspended;
-static struct clk *armpll_save_parent;
 static struct clk *iopll_save_parent;
 
 #define TOPSW_CLK_CTRL_DIS_MASK	BIT(0)
@@ -113,28 +114,18 @@ int zynq_clk_suspend_early(void)
 {
 	int ret;
 
-	zynq_clk_suspended = 1;
-
 	iopll_save_parent = clk_get_parent(clks[iopll]);
-	armpll_save_parent = clk_get_parent(clks[armpll]);
 
 	ret = clk_set_parent(clks[iopll], ps_clk);
 	if (ret)
 		pr_info("%s: reparent iopll failed %d\n", __func__, ret);
-
-	ret = clk_set_parent(clks[armpll], ps_clk);
-	if (ret)
-		pr_info("%s: reparent armpll failed %d\n", __func__, ret);
 
 	return 0;
 }
 
 void zynq_clk_resume_late(void)
 {
-	clk_set_parent(clks[armpll], armpll_save_parent);
 	clk_set_parent(clks[iopll], iopll_save_parent);
-
-	zynq_clk_suspended = 0;
 }
 
 void zynq_clk_topswitch_enable(void)
@@ -204,7 +195,7 @@ static void __init zynq_clk_register_fclk(enum zynq_clk fclk,
 	clks[fclk] = clk_register_gate(NULL, clk_name,
 			div1_name, CLK_SET_RATE_PARENT, fclk_gate_reg,
 			0, CLK_GATE_SET_TO_DISABLE, fclk_gate_lock);
-	enable_reg = readl(fclk_gate_reg) & 1;
+	enable_reg = clk_readl(fclk_gate_reg) & 1;
 	if (enable && !enable_reg) {
 		if (clk_prepare_enable(clks[fclk]))
 			pr_warn("%s: FCLK%u enable failed\n", __func__,
@@ -276,7 +267,7 @@ static void __init zynq_clk_setup(struct device_node *np)
 	int ret;
 	struct clk *clk;
 	char *clk_name;
-	unsigned int fclk_enable;
+	unsigned int fclk_enable = 0;
 	const char *clk_output_name[clk_max];
 	const char *cpu_parents[4];
 	const char *periph_parents[4];
@@ -302,6 +293,8 @@ static void __init zynq_clk_setup(struct device_node *np)
 	periph_parents[2] = clk_output_name[armpll];
 	periph_parents[3] = clk_output_name[ddrpll];
 
+	of_property_read_u32(np, "fclk-enable", &fclk_enable);
+
 	/* ps_clk */
 	ret = of_property_read_u32(np, "ps-clk-frequency", &tmp);
 	if (ret) {
@@ -310,10 +303,6 @@ static void __init zynq_clk_setup(struct device_node *np)
 	}
 	ps_clk = clk_register_fixed_rate(NULL, "ps_clk", NULL, CLK_IS_ROOT,
 			tmp);
-
-	ret = of_property_read_u32(np, "fclk-enable", &fclk_enable);
-	if (ret)
-		fclk_enable = 0xf;
 
 	/* PLLs */
 	clk = clk_register_zynq_pll("armpll_int", "ps_clk", SLCR_ARMPLL_CTRL,
@@ -335,7 +324,7 @@ static void __init zynq_clk_setup(struct device_node *np)
 			SLCR_IOPLL_CTRL, 4, 1, 0, &iopll_lock);
 
 	/* CPU clocks */
-	tmp = readl(SLCR_621_TRUE) & 1;
+	tmp = clk_readl(SLCR_621_TRUE) & 1;
 	clk = clk_register_mux(NULL, "cpu_mux", cpu_parents, 4,
 			CLK_SET_RATE_NO_REPARENT, SLCR_ARM_CLK_CTRL, 4, 2, 0,
 			&armclk_lock);
@@ -555,6 +544,15 @@ static void __init zynq_clk_setup(struct device_node *np)
 	clks[dbg_apb] = clk_register_gate(NULL, clk_output_name[dbg_apb],
 			clk_output_name[cpu_1x], 0, SLCR_DBG_CLK_CTRL, 1, 0,
 			&dbgclk_lock);
+
+	/* leave debug clocks in the state the bootloader set them up to */
+	tmp = clk_readl(SLCR_DBG_CLK_CTRL);
+	if (tmp & DBG_CLK_CTRL_CLKACT_TRC)
+		if (clk_prepare_enable(clks[dbg_trc]))
+			pr_warn("%s: trace clk enable failed\n", __func__);
+	if (tmp & DBG_CLK_CTRL_CPU_1XCLKACT)
+		if (clk_prepare_enable(clks[dbg_apb]))
+			pr_warn("%s: debug APB clk enable failed\n", __func__);
 
 	/* One gated clock for all APER clocks. */
 	clks[dma] = clk_register_gate(NULL, clk_output_name[dma],

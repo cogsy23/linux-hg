@@ -22,7 +22,6 @@
 
 #include <linux/delay.h>
 #include <linux/etherdevice.h>
-#include <linux/init.h>
 #include <linux/module.h>
 #include <linux/netdevice.h>
 #include <linux/of_mdio.h>
@@ -768,7 +767,7 @@ static void axienet_recv(struct net_device *ndev)
 				skb->ip_summed = CHECKSUM_UNNECESSARY;
 			}
 		} else if ((lp->features & XAE_FEATURE_PARTIAL_RX_CSUM) != 0 &&
-			   skb->protocol == __constant_htons(ETH_P_IP) &&
+			   skb->protocol == htons(ETH_P_IP) &&
 			   skb->len > 64) {
 			skb->csum = be32_to_cpu(cur_p->app3 & 0xFFFF);
 			skb->ip_summed = CHECKSUM_COMPLETE;
@@ -1541,7 +1540,6 @@ static int axienet_probe(struct platform_device *pdev)
 	if (!ndev)
 		return -ENOMEM;
 
-	ether_setup(ndev);
 	platform_set_drvdata(pdev, ndev);
 
 	SET_NETDEV_DEV(ndev, &pdev->dev);
@@ -1557,9 +1555,8 @@ static int axienet_probe(struct platform_device *pdev)
 	/* Map device registers */
 	ethres = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	lp->regs = devm_ioremap_resource(&pdev->dev, ethres);
-	if (!lp->regs) {
-		dev_err(&pdev->dev, "could not map Axi Ethernet regs.\n");
-		ret = -ENOMEM;
+	if (IS_ERR(lp->regs)) {
+		ret = PTR_ERR(lp->regs);
 		goto free_netdev;
 	}
 
@@ -1632,9 +1629,8 @@ static int axienet_probe(struct platform_device *pdev)
 		goto free_netdev;
 	}
 	lp->dma_regs = devm_ioremap_resource(&pdev->dev, &dmares);
-	if (!lp->dma_regs) {
-		dev_err(&pdev->dev, "could not map DMA regs\n");
-		ret = -ENOMEM;
+	if (IS_ERR(lp->dma_regs)) {
+		ret = PTR_ERR(lp->dma_regs);
 		goto free_netdev;
 	}
 	lp->rx_irq = irq_of_parse_and_map(np, 1);
@@ -1668,6 +1664,7 @@ static int axienet_probe(struct platform_device *pdev)
 	ret = register_netdev(lp->ndev);
 	if (ret) {
 		dev_err(lp->dev, "register_netdev() error (%i)\n", ret);
+		axienet_mdio_teardown(lp);
 		goto free_netdev;
 	}
 
@@ -1687,8 +1684,7 @@ static int axienet_remove(struct platform_device *pdev)
 	axienet_mdio_teardown(lp);
 	unregister_netdev(ndev);
 
-	if (lp->phy_node)
-		of_node_put(lp->phy_node);
+	of_node_put(lp->phy_node);
 	lp->phy_node = NULL;
 
 	free_netdev(ndev);
@@ -1700,7 +1696,6 @@ static struct platform_driver axienet_driver = {
 	.probe = axienet_probe,
 	.remove = axienet_remove,
 	.driver = {
-		 .owner = THIS_MODULE,
 		 .name = "xilinx_axienet",
 		 .of_match_table = axienet_of_match,
 	},
