@@ -235,8 +235,10 @@ static int wlcore_probe_of(struct device *dev, int *irq,
 {
 	struct device_node *np = dev->of_node;
 
-	if (!np || !of_match_node(wlcore_sdio_of_match_table, np))
+	if (!np || !of_match_node(wlcore_sdio_of_match_table, np)) {
+		dev_err(dev, "SDIO Node not compatible (%p)", np);
 		return -ENODATA;
+	}
 
 	*irq = irq_of_parse_and_map(np, 0);
 	if (!*irq) {
