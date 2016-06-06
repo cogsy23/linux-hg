@@ -412,6 +412,8 @@ static int zynq_gpio_set_irq_type(struct irq_data *irq_data, unsigned int type)
 	int_any = readl_relaxed(gpio->base_addr +
 				ZYNQ_GPIO_INTANY_OFFSET(bank_num));
 
+	pr_info("GPIO %d bank %d set to type %d\n", bank_num, bank_pin_num, type);
+
 	/*
 	 * based on the type requested, configure the INT_TYPE, INT_POLARITY
 	 * and INT_ANY registers

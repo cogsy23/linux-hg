@@ -122,6 +122,7 @@
 		} ;
 		ps7_gpio_0: ps7-gpio@e000a000 {
 			#gpio-cells = <2>;
+			#interrupt-cells = <2>;
 			clocks = <&clkc 42>;
 			compatible = "xlnx,zynq-gpio-1.0";
 			emio-gpio-width = <64>;
@@ -130,6 +131,7 @@
 			gpio-mask-low = <0x5600>;
 			interrupt-parent = <&ps7_scugic_0>;
 			interrupts = <0 20 4>;
+			interrupt-controller ;
 			reg = <0xe000a000 0x1000>;
 			xlnx,emio-gpio-width = <0x40>;
 			xlnx,mio-gpio-mask = <0x5600>;
@@ -546,7 +548,7 @@
 		wl1837 {
 			compatible = "ti,wl1837";
 			interrupt-parent = <&ps7_gpio_0>;
-			interrupts = <0 0 4>;
+			interrupts = <0 4>; // GPIO 0 (= MIO 0), active-high level sensitive
 		};
 	} ;
 } ;
