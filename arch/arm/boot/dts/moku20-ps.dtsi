@@ -62,7 +62,7 @@
 			reg = <0xf800b000 0x1000>;
 		} ;
 		ps7_ddrc_0: ps7-ddrc@f8006000 {
-			compatible = "xlnx,zynq-ddrc-1.0";
+			compatible = "xlnx,zynq-ddrc-a05";
 			reg = <0xf8006000 0x1000>;
 			xlnx,has-ecc = <0x0>;
 		} ;
@@ -120,21 +120,23 @@
 			interrupts = <1 11 0x301>;
 			reg = <0xf8f00200 0x100>;
 		} ;
+		ps7_xadc: ps7-xadc@f8007100 {
+			compatible = "xlnx,zynq-xadc-1.00.a";
+			reg = <0xf8007100 0x20>;
+			interrupts = <0 7 4>;
+			interrupt-parent = <&ps7_scugic_0>;
+			clocks = <&clkc 12>;
+		};
 		ps7_gpio_0: ps7-gpio@e000a000 {
 			#gpio-cells = <2>;
 			#interrupt-cells = <2>;
 			clocks = <&clkc 42>;
 			compatible = "xlnx,zynq-gpio-1.0";
-			emio-gpio-width = <64>;
 			gpio-controller ;
-			gpio-mask-high = <0x0>;
-			gpio-mask-low = <0x5600>;
 			interrupt-parent = <&ps7_scugic_0>;
 			interrupts = <0 20 4>;
 			interrupt-controller ;
 			reg = <0xe000a000 0x1000>;
-			xlnx,emio-gpio-width = <0x40>;
-			xlnx,mio-gpio-mask = <0x5600>;
 		} ;
 		ps7_i2c_1: ps7-i2c@e0005000 {
 			#address-cells = <1>;
@@ -411,7 +413,7 @@
 			#address-cells = <2>;
 			#interrupt-cells = <3>;
 			#size-cells = <1>;
-			compatible = "arm,cortex-a9-gic", "arm,gic";
+			compatible = "arm,cortex-a9-gic";
 			interrupt-controller ;
 			num_cpus = <2>;
 			num_interrupts = <96>;
@@ -465,7 +467,7 @@
 		ps7_slcr_0: ps7-slcr@f8000000 {
 			#address-cells = <1>;
 			#size-cells = <1>;
-			compatible = "xlnx,zynq-slcr", "syscon";
+			compatible = "xlnx,zynq-slcr", "syscon", "simple-bus";
 			ranges ;
 			reg = <0xf8000000 0x1000>;
 			clkc: clkc@100 {
@@ -485,6 +487,18 @@
 				ps-clk-frequency = <33333333>;
 				reg = <0x100 0x100>;
 			} ;
+			rstc: rstc@200 {
+				compatible = "xlnx,zynq-reset";
+				reg = <0x200 0x48>;
+				#reset-cells = <1>;
+				syscon = <&ps7_slcr_0>;
+			};
+
+			pinctrl0: pinctrl@700 {
+				compatible = "xlnx,pinctrl-zynq";
+				reg = <0x700 0x200>;
+				syscon = <&ps7_slcr_0>;
+			};
 		} ;
 		ps7_uart_0: serial@e0000000 {
 			clock-names = "uart_clk", "pclk";
