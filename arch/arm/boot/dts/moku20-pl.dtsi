@@ -19,7 +19,7 @@
 				xlnx,datawidth = <0x40>;
 			} ;
 		} ;
-		stream0: stream0@40420000 {
+		frame1: frame1@40420000 {
 			#dma-cells = <1>;
 			compatible = "xlnx,axi-dma-1.00.a";
 			interrupt-parent = <&ps7_scugic_0>;
@@ -32,7 +32,7 @@
 				xlnx,datawidth = <0x40>;
 			} ;
 		} ;
-		frame1: frame1@40430000 {
+		stream0: stream0@40430000 {
 			#dma-cells = <1>;
 			compatible = "xlnx,axi-dma-1.00.a";
 			interrupt-parent = <&ps7_scugic_0>;
